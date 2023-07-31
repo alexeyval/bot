@@ -1,14 +1,21 @@
 package main
 
 import (
-	"log"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/spf13/viper"
+	"log"
 )
 
-const token = "TOKEN"
-
 func main() {
+	viper.AutomaticEnv()
+	viper.SetConfigFile(".env") // Путь к файлу .env
+
+	_ = viper.ReadInConfig()
+	//if err != nil {
+	//	log.Fatal("Ошибка при чтении файла .env:", err)
+	//}
+	token := viper.GetString("TOKEN")
+
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
@@ -27,12 +34,26 @@ func main() {
 		if update.Message == nil {
 			continue
 		}
-		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You wrote: "+update.Message.Text)
-		//msg.ReplyToMessageID = update.Message.MessageID
-
-		bot.Send(msg)
-
+		switch update.Message.Command() {
+		case "help":
+			helpCommand(bot, update.Message)
+		default:
+			defaultBehavior(bot, update.Message)
+		}
 	}
+}
+
+func helpCommand(bot *tgbotapi.BotAPI, inputMessage *tgbotapi.Message) {
+	msg := tgbotapi.NewMessage(inputMessage.Chat.ID, "/help - help")
+
+	bot.Send(msg)
+}
+
+func defaultBehavior(bot *tgbotapi.BotAPI, inputMessage *tgbotapi.Message) {
+	log.Printf("[%s] %s", inputMessage.From.UserName, inputMessage.Text)
+
+	msg := tgbotapi.NewMessage(inputMessage.Chat.ID, "You wrote: "+inputMessage.Text)
+
+	bot.Send(msg)
 }
